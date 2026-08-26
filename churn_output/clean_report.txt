@@ -1,0 +1,46 @@
+============================================================
+数据清洗审计报告
+============================================================
+
+原始数据规模:10000 行，14 列
+原始字段列表：['RowNumber', 'CustomerId', 'Surname', 'CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 'EstimatedSalary', 'Exited']
+
+无重复数据
+
+删除ID类字段:['RowNumber', 'CustomerId', 'Surname']
+剩余字段数：11
+
+---------- 缺失值处理 ----------
+处理前缺失值统计：
+Geography           508
+EstimatedSalary    1159
+Geography 缺失值 0 个，用众数 France 填充
+EstimatedSalary 缺失值 0 个，用中位数 99818.31 填充
+处理后缺失值总数：0
+
+---------- 异常值处理 ----------
+年龄录入异常值999共 187 个，替换为正常中位数 37.0
+信用分录入异常值-999共 98 个，替换为正常中位数 652.0
+
+数值字段极端值盖帽处理(1%~99%分位):
+  CreditScore: 范围 [350.00, 850.00] → [432.00, 850.00]
+  Age: 范围 [18.00, 92.00] → [21.00, 72.00]
+  Tenure: 范围 [0.00, 10.00] → [0.00, 10.00]
+  Balance: 范围 [0.00, 10084803.50] → [0.00, 4447730.10]
+  EstimatedSalary: 范围 [11.58, 199992.48] → [2035.78, 197962.16]
+
+---------- 数据类型校验 ----------
+CreditScore          int64
+Geography              str
+Gender                 str
+Age                  int64
+Tenure               int64
+Balance            float64
+NumOfProducts        int64
+HasCrCard            int64
+IsActiveMember       int64
+EstimatedSalary    float64
+Exited               int64
+
+清洗后数据已保存:cleaned_data.csv
+最终数据规模：10000 行，11 列

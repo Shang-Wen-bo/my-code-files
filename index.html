@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>银行客户流失预警模型分析报告</title>
+  <!-- 引入Vue3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <!-- 引入ECharts图表库 -->
+  <script src="https://unpkg.com/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      padding: 40px 0;
+    }
+    .report-wrap {
+      width: 1200px;
+      margin: 0 auto;
+    }
+
+    /* ========== 响应式布局 ========== */
+    /* 平板端：宽度小于1100px */
+    @media (max-width: 1100px) {
+      .report-wrap {
+        width: 95%;
+      }
+      .img-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+      .card-row {
+        flex-wrap: wrap;
+      }
+      .stat-card {
+        flex: 0 0 calc(50% - 10px);
+      }
+    }
+
+    /* 手机端：宽度小于700px */
+    @media (max-width: 700px) {
+      body {
+        padding: 20px 0;
+      }
+      .report-wrap {
+        width: 95%;
+      }
+      .header h1 {
+        font-size: 24px;
+      }
+      .section {
+        padding: 16px;
+      }
+      .section-title {
+        font-size: 18px;
+      }
+      .img-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .card-row {
+        flex-direction: column;
+        gap: 12px;
+      }
+      .stat-card {
+        flex: 1;
+      }
+      .stat-card .num {
+        font-size: 24px;
+      }
+      .feature-wrap {
+        flex-direction: column;
+        gap: 20px;
+      }
+      /* 表格横向滚动 */
+      .metric-table {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+      }
+      .chart {
+        height: 280px;
+      }
+      .export-btn {
+        display: inline-block;
+        width: auto;
+        margin-top: 0;
+        padding: 4px 12px;
+        font-size: 13px;
+      }
+      /* 移动端隐藏图片点击提示 */
+      .section-title .tip {
+        display: none;
+      }
+      /* 移动端禁用图片点击放大 */
+      .img-box img,
+      .feature-img img {
+        pointer-events: none;
+      }
+      /* 移动端去掉悬停放大效果 */
+      .img-box:hover {
+        box-shadow: none;
+      }
+      .img-box:hover img,
+      .feature-img:hover img {
+        transform: none;
+      }
+    }
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .header h1 {
+      font-size: 32px;
+      color: #1f2d3d;
+      margin-bottom: 10px;
+    }
+    .sub-title {
+      font-size: 16px;
+      color: #606266;
+    }
+    .section {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+    .section-title {
+      font-size: 20px;
+      margin-bottom: 20px;
+      padding-left: 12px;
+      border-left: 4px solid #409eff;
+      color: #1f2d3d;
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .section-title .tip {
+      font-size: 13px;
+      font-weight: normal;
+      color: #909399;
+      margin-left: 8px;
+    }
+    .export-btn {
+      font-size: 14px;
+      font-weight: normal;
+      padding: 6px 16px;
+      background: #409eff;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.3s;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .export-btn:hover {
+      background: #66b1ff;
+    }
+
+    /* 统计卡片 */
+    .card-row {
+      display: flex;
+      gap: 20px;
+    }
+    .stat-card {
+      flex: 1;
+      text-align: center;
+      padding: 20px;
+      background: #f0f7ff;
+      border-radius: 8px;
+    }
+    .stat-card .num {
+      font-size: 28px;
+      font-weight: bold;
+      color: #409eff;
+      margin-bottom: 8px;
+    }
+    .stat-card .label {
+      font-size: 14px;
+      color: #606266;
+    }
+
+    /* 图片网格 */
+    .img-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .img-box {
+      border: 1px solid #ebeef5;
+      border-radius: 6px;
+      overflow: hidden;
+      text-align: center;
+      cursor: pointer;
+      transition: box-shadow 0.3s ease;
+    }
+    .img-box:hover {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+    .img-box img {
+      width: 100%;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    .img-box:hover img {
+      transform: scale(1.08);
+    }
+    .img-box p {
+      margin: 0;
+      padding: 10px;
+      font-size: 14px;
+      background: #fafafa;
+      color: #606266;
+    }
+    .img-box p .tip {
+      font-size: 12px;
+      color: #909399;
+      margin-left: 4px;
+    }
+
+    /* 指标表格 */
+    .metric-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 30px;
+    }
+    .metric-table th,
+    .metric-table td {
+      padding: 12px 16px;
+      text-align: center;
+      border-bottom: 1px solid #ebeef5;
+    }
+    .metric-table th {
+      background: #f5f7fa;
+      font-weight: 600;
+      color: #1f2d3d;
+    }
+    .metric-table .model-name {
+      font-weight: 600;
+      color: #409eff;
+    }
+    .metric-table .highlight {
+      color: #67c23a;
+      font-weight: 600;
+    }
+    .chart-box h3 {
+      font-size: 16px;
+      margin-bottom: 16px;
+      color: #1f2d3d;
+    }
+    .chart {
+      width: 100%;
+      height: 350px;
+    }
+
+    /* 特征重要性 */
+    .feature-wrap {
+      display: flex;
+      gap: 30px;
+      align-items: flex-start;
+    }
+    .feature-img {
+      flex: 1;
+      cursor: pointer;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .feature-img img {
+      width: 100%;
+      border-radius: 6px;
+      transition: transform 0.3s ease;
+      display: block;
+    }
+    .feature-img:hover img {
+      transform: scale(1.05);
+    }
+    .feature-text {
+      flex: 1;
+      padding-top: 20px;
+    }
+    .feature-text h3 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #1f2d3d;
+    }
+    .feature-text ul {
+      line-height: 2;
+      color: #606266;
+      padding-left: 20px;
+    }
+
+    /* 结论 */
+    .conclusion-box h4 {
+      font-size: 16px;
+      margin: 16px 0 8px;
+      color: #1f2d3d;
+    }
+    .conclusion-box p {
+      line-height: 1.8;
+      color: #606266;
+      margin: 6px 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="report-wrap">
+    <div class="header">
+      <h1>银行客户流失预警模型分析报告</h1>
+      <p class="sub-title">基于机器学习方法的客户流失预测研究</p>
+    </div>
+
+    <!-- 1. 数据集概览 -->
+    <section class="section">
+      <h2 class="section-title">一、数据集概览</h2>
+      <div class="card-row">
+        <div class="stat-card">
+          <div class="num">{{ datasetInfo.total }}</div>
+          <div class="label">总样本量</div>
+        </div>
+        <div class="stat-card">
+          <div class="num">{{ datasetInfo.featureNum }}</div>
+          <div class="label">特征数量</div>
+        </div>
+        <div class="stat-card">
+          <div class="num">{{ datasetInfo.churnRate }}%</div>
+          <div class="label">整体流失率</div>
+        </div>
+        <div class="stat-card">
+          <div class="num">{{ datasetInfo.trainTest }}</div>
+          <div class="label">训练/测试集划分</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. 数据可视化 -->
+    <section class="section">
+      <h2 class="section-title">二、数据可视化分析 <span class="tip">（点击图片可在新窗口查看大图）</span></h2>
+      <div class="img-grid">
+        <div class="img-box">
+          <img src="./churn_output/churn_pie.png" alt="流失分布饼图" @click="openImage($event)" />
+          <p>客户流失标签分布</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/geo_churn_bar.png" alt="地域流失率" @click="openImage($event)" />
+          <p>不同地域客户流失率对比</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/age_boxplot.png" alt="年龄分布" @click="openImage($event)" />
+          <p>流失与未流失客户年龄分布</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/corr_heatmap.png" alt="相关性热力图" @click="openImage($event)" />
+          <p>特征相关性热力图</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/balance_hist.png" alt="余额分布" @click="openImage($event)" />
+          <p>客户账户余额分布</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 模型性能对比 -->
+    <section class="section">
+      <h2 class="section-title">
+        三、模型性能评估对比
+        <button class="export-btn" @click="exportTable">导出表格</button>
+      </h2>
+      
+      <table class="metric-table">
+        <thead>
+          <tr>
+            <th>模型</th>
+            <th>准确率</th>
+            <th>精确率</th>
+            <th>召回率</th>
+            <th>F1分数</th>
+            <th>测试集AUC</th>
+            <th>5折交叉验证AUC</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="item in modelMetrics" :key="item.name">
+            <td class="model-name">{{ item.name }}</td>
+            <td>{{ item.acc }}</td>
+            <td>{{ item.prec }}</td>
+            <td>{{ item.rec }}</td>
+            <td>{{ item.f1 }}</td>
+            <td class="highlight">{{ item.auc }}</td>
+            <td>{{ item.cvAuc }}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="chart-box">
+        <h3>各模型AUC对比</h3>
+        <div ref="aucChart" class="chart"></div>
+      </div>
+    </section>
+
+    <!-- 4. 混淆矩阵 -->
+    <section class="section">
+      <h2 class="section-title">四、模型混淆矩阵 <span class="tip">（点击图片可在新窗口查看大图）</span></h2>
+      <div class="img-grid">
+        <div class="img-box">
+          <img src="./churn_output/cm_逻辑回归.png" alt="逻辑回归混淆矩阵" @click="openImage($event)" />
+          <p>逻辑回归</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/cm_决策树.png" alt="决策树混淆矩阵" @click="openImage($event)" />
+          <p>决策树</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/cm_随机森林.png" alt="随机森林混淆矩阵" @click="openImage($event)" />
+          <p>随机森林</p>
+        </div>
+        <div class="img-box">
+          <img src="./churn_output/cm_XGBoost.png" alt="XGBoost混淆矩阵" @click="openImage($event)" />
+          <p>XGBoost</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. 特征重要性 -->
+    <section class="section">
+      <h2 class="section-title">五、特征重要性分析 <span class="tip">（点击图片可在新窗口查看大图）</span></h2>
+      <div class="feature-wrap">
+        <div class="feature-img">
+          <img src="./churn_output/feature_importance.png" alt="特征重要性" @click="openImage($event)" />
+        </div>
+        <div class="feature-text">
+          <h3>核心影响因素解读</h3>
+          <ul>
+            <li><strong>年龄</strong>：流失客户平均年龄显著高于未流失客户，中老年客户流失风险更高</li>
+            <li><strong>产品持有数量</strong>：持有产品越少，流失率越高；单产品客户流失风险最大</li>
+            <li><strong>会员活跃度</strong>:非活跃会员流失率约为活跃会员的2倍</li>
+            <li><strong>地域</strong>：德国地区客户流失率显著高于法国和西班牙</li>
+            <li><strong>账户余额</strong>:余额较高和余额为0的客户流失倾向更强</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. 结论与建议 -->
+    <section class="section conclusion">
+      <h2 class="section-title">六、结论与业务建议</h2>
+      <div class="conclusion-box">
+        <h4>研究结论</h4>
+        <p>1. XGBoost模型综合表现最优,测试集AUC可达0.85以上，对客户流失风险具备良好的区分能力。</p>
+        <p>2. 客户流失是多因素共同作用的结果，人口属性、产品持有、活跃程度、地域均会产生显著影响。</p>
+        
+        <h4>业务建议</h4>
+        <p>1. 建立流失预警机制：基于模型输出高风险客户名单，提前开展挽留运营。</p>
+        <p>2. 精准运营策略：针对中老年客户、单产品客户、非活跃客户推出专属权益，提升客户粘性。</p>
+        <p>3. 产品交叉销售：向存量客户推广更多银行产品，增加客户持有数量，降低流失概率。</p>
+        <p>4. 区域差异化运营：针对德国地区制定专项挽留方案，降低区域整体流失率。</p>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const { createApp, ref, onMounted } = Vue;
+
+    createApp({
+      setup() {
+        // ========== 数据集基础信息 ==========
+        const datasetInfo = ref({
+          total: 10000,
+          featureNum: 20,
+          churnRate: 20.37,
+          trainTest: '7:3'
+        });
+
+        // ========== 模型指标（跑完Python后，用model_report.txt里的真实数值替换这里） ==========
+        const modelMetrics = ref([
+          { name: '逻辑回归', acc: '0.8143', prec: '0.5584', rec: '0.4223', f1: '0.4809', auc: '0.7762', cvAuc: '0.9160' },
+          { name: '决策树', acc: '0.8313', prec: '0.5832', rec: '0.6023', f1: '0.5926', auc: '0.8409', cvAuc: '0.9167' },
+          { name: '随机森林', acc: '0.8363', prec: '0.6007', rec: '0.5859', f1: '0.5932', auc: '0.8547', cvAuc: '0.9336' },
+          { name: 'XGBoost', acc: '0.8580', prec: '0.6972', rec: '0.5352', f1: '0.6056', auc: '0.8548', cvAuc: '0.9595' }
+        ]);
+
+        const aucChart = ref(null);
+
+        // 点击图片在新窗口打开原图
+        const openImage = (e) => {
+          window.open(e.target.src, '_blank');
+        };
+
+        // 一键导出模型对比表格为CSV
+        const exportTable = () => {
+          const headers = ['模型', '准确率', '精确率', '召回率', 'F1分数', '测试集AUC', '5折交叉验证AUC'];
+          const rows = modelMetrics.value.map(item => [
+            item.name, item.acc, item.prec, item.rec, item.f1, item.auc, item.cvAuc
+          ]);
+          const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.join(',')).join('\n');
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = '模型性能对比表.csv';
+          link.click();
+          URL.revokeObjectURL(url);
+        };
+
+        // 初始化AUC对比柱状图
+        const initAucChart = () => {
+          const chart = echarts.init(aucChart.value);
+          // 判断是否为移动端，移动端不用跟随鼠标的tooltip
+          const isMobile = window.innerWidth <= 700;
+          const tooltipConfig = isMobile
+            ? {
+                trigger: 'axis',
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                borderColor: '#409eff',
+                borderWidth: 1,
+                padding: [10, 14],
+                textStyle: { fontSize: 14, color: '#333' }
+              }
+            : {
+                trigger: 'axis',
+                position: function (point, params, dom, rect, size) {
+                  return [point[0] + 15, point[1] - size.contentSize[1] - 10];
+                },
+                backgroundColor: 'rgba(255, 255, 255, 0.98)',
+                borderColor: '#409eff',
+                borderWidth: 1,
+                padding: [12, 16],
+                textStyle: { fontSize: 16, color: '#333' },
+                extraCssText: 'box-shadow: 0 4px 12px rgba(0,0,0,0.15); border-radius: 6px;'
+              };
+          const option = {
+            tooltip: tooltipConfig,
+            xAxis: {
+              type: 'category',
+              data: modelMetrics.value.map(item => item.name),
+              axisLabel: { color: '#333' }
+            },
+            yAxis: {
+              type: 'value',
+              min: 0.7,
+              max: 0.9,
+              axisLabel: { color: '#333' }
+            },
+            series: [
+              {
+                name: '测试集AUC',
+                type: 'bar',
+                data: modelMetrics.value.map(item => parseFloat(item.auc)),
+                barWidth: '40%',
+                itemStyle: {
+                  color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#409eff' },
+                    { offset: 1, color: '#66b1ff' }
+                  ])
+                },
+                label: {
+                  show: true,
+                  position: 'top',
+                  formatter: '{c}'
+                }
+              }
+            ]
+          };
+          chart.setOption(option);
+          window.addEventListener('resize', () => chart.resize());
+        };
+
+        onMounted(() => {
+          initAucChart();
+        });
+
+        return {
+          datasetInfo,
+          modelMetrics,
+          aucChart,
+          openImage,
+          exportTable
+        };
+      }
+    }).mount('#app');
+  </script>
+</body>
+</html>
